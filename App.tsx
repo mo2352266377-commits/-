@@ -1,28 +1,51 @@
 import React, { useState, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
-import { Upload, Image as ImageIcon, Sparkles, Download, RefreshCw, X, Paintbrush } from 'lucide-react';
+import { 
+  Upload, Sparkles, Download, RefreshCw, X, Zap, Layers, 
+  Smile, Maximize2, ChevronRight, Info 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-const PRESETS = [
-  { label: "望月けい风 (Kei Mochizuki Style)", prompt: "art style of Kei Mochizuki, sharp bold lineart, thick outlines, angular features, vibrant high-contrast colors, extremely flat colors, hard edge cel shading, pop art anime aesthetic, stylish and cool. NO soft shading, NO gradients, NO 3d render, NO glowing." },
-  { label: "赛璐璐平涂 (Cel Shading)", prompt: "clean lineart, cel shading, flat color, simple shading, retro 90s anime style, matte painting, simple background. DO NOT over-render, NO glowing, NO complex lighting." },
-  { label: "90年代复古 (90s Retro)", prompt: "retro 90s anime style, VHS filter, muted colors, nostalgic anime aesthetic, cel shading, slightly blurry edges, amateur photography feel." },
-  { label: "铅笔草稿风 (Pencil Sketch)", prompt: "pencil sketch, rough doodle, visible paper texture, monochrome, unfinished anime sketch, messy lines, traditional media." },
-  { label: "吉卜力水彩 (Ghibli Watercolor)", prompt: "Studio Ghibli style, watercolor painting, natural lighting, soft edges, traditional media, visible brush strokes, earthy tones." }
+const STYLE_PRESETS = [
+  { 
+    id: 'mochizuki',
+    label: "望月けい风", 
+    desc: "锐利线条与极致平涂",
+    prompt: "art style of Kei Mochizuki, sharp bold lineart, thick outlines, angular features, vibrant high-contrast colors, extremely flat colors, hard edge cel shading, pop art anime aesthetic, stylish and cool. NO soft shading, NO gradients, NO 3d render, NO glowing." 
+  },
+  { 
+    id: 'cel',
+    label: "赛璐璐平涂", 
+    desc: "干净清爽的动画感",
+    prompt: "clean lineart, cel shading, flat color, simple shading, retro 90s anime style, matte painting, simple background. DO NOT over-render, NO glowing, NO complex lighting." 
+  },
+  { 
+    id: 'retro',
+    label: "90s 复古", 
+    desc: "怀旧录像带质感",
+    prompt: "retro 90s anime style, VHS filter, muted colors, nostalgic anime aesthetic, cel shading, slightly blurry edges, amateur photography feel." 
+  },
+  { 
+    id: 'sketch',
+    label: "铅笔草稿", 
+    desc: "传统手绘的呼吸感",
+    prompt: "pencil sketch, rough doodle, visible paper texture, monochrome, unfinished anime sketch, messy lines, traditional media." 
+  }
 ];
 
 const ACTION_PRESETS = [
-  { label: "开心大笑 (Laughing)", prompt: "laughing out loud, big smile, happy expression, dynamic pose" },
-  { label: "害羞转头 (Shy)", prompt: "looking away shyly, blushing, slightly embarrassed" },
-  { label: "战斗姿态 (Combat)", prompt: "dynamic combat pose, intense expression, action shot" },
-  { label: "慵懒趴着 (Lazy)", prompt: "resting head on arms, sleepy expression, lazy posture" }
+  { label: "大笑", prompt: "laughing out loud, big smile, happy expression, dynamic pose" },
+  { label: "害羞", prompt: "looking away shyly, blushing, slightly embarrassed" },
+  { label: "战斗", prompt: "dynamic combat pose, intense expression, action shot" },
+  { label: "慵懒", prompt: "resting head on arms, sleepy expression, lazy posture" },
+  { label: "回眸", prompt: "looking over shoulder, mysterious expression" }
 ];
 
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [base64Data, setBase64Data] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>('');
-  const [prompt, setPrompt] = useState<string>(PRESETS[0].prompt);
+  const [selectedStyle, setSelectedStyle] = useState(STYLE_PRESETS[0]);
   const [actionPrompt, setActionPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -33,7 +56,6 @@ export default function App() {
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setMimeType(file.type);
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -46,41 +68,23 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
-  const clearImage = () => {
-    setImage(null);
-    setBase64Data(null);
-    setResultImage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
   const handleGenerate = async () => {
-    if (!base64Data || !prompt) return;
-
+    if (!base64Data) return;
     setIsGenerating(true);
     setError(null);
 
     try {
       const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-      
       const finalPrompt = actionPrompt.trim() 
-        ? `Based on the character in the reference image, redraw them with a COMPLETELY NEW pose and expression: "${actionPrompt}". Do not just trace the original image. Apply this art style: ${prompt}`
-        : `Redraw and style transfer this image according to the following description: ${prompt}`;
+        ? `Based on the character in the reference image, redraw them with a COMPLETELY NEW pose and expression: "${actionPrompt}". Do not just trace the original image. Apply this art style: ${selectedStyle.prompt}`
+        : `Redraw and style transfer this image according to the following description: ${selectedStyle.prompt}`;
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
           parts: [
-            {
-              inlineData: {
-                data: base64Data,
-                mimeType: mimeType,
-              },
-            },
-            {
-              text: finalPrompt,
-            },
+            { inlineData: { data: base64Data, mimeType: mimeType } },
+            { text: finalPrompt }
           ],
         },
       });
@@ -93,249 +97,132 @@ export default function App() {
           break;
         }
       }
-
-      if (!foundImage) {
-        setError("AI did not return an image. Please try a different prompt or image.");
-      }
+      if (!foundImage) setError("AI 未返回图像，请尝试更换提示词。");
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "An error occurred during generation.");
+      setError(err.message || "生成过程中发生错误。");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handleDownload = () => {
-    if (!resultImage) return;
-    const a = document.createElement('a');
-    a.href = resultImage;
-    a.download = 'de-ai-fied-anime.png';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50 font-sans selection:bg-emerald-500/30">
-      {/* Header */}
-      <header className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-zinc-950">
-              <Paintbrush size={18} strokeWidth={2.5} />
-            </div>
-            <h1 className="font-semibold tracking-tight text-lg">Anime De-AI-fier</h1>
+    <div className="min-h-screen flex flex-col font-sans">
+      {/* 顶部导航 */}
+      <nav className="h-14 border-b border-white/10 flex items-center justify-between px-6 bg-black/50 backdrop-blur-xl sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 bg-emerald-500 rotate-45 flex items-center justify-center">
+            <Zap size={14} className="-rotate-45 text-black fill-current" />
           </div>
-          <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
-            Gemini 2.5 Flash Image
-          </div>
+          <span className="font-bold tracking-tighter text-lg uppercase">Anime Studio</span>
         </div>
-      </header>
+        <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-white/40 uppercase tracking-[0.2em]">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          System Active: Gemini 2.5
+        </div>
+      </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Left Column: Controls */}
-          <div className="lg:col-span-5 space-y-6">
-            
-            {/* Upload Section */}
-            <section className="space-y-3">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* 左侧控制栏 */}
+        <aside className="w-full lg:w-[400px] border-r border-white/10 flex flex-col bg-[#080808] overflow-y-auto no-scrollbar">
+          <div className="p-6 space-y-8">
+            <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">1. Original Image</h2>
-                {image && (
-                  <button onClick={clearImage} className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors">
-                    <X size={14} /> Clear
-                  </button>
-                )}
+                <label className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                  <span className="w-4 h-px bg-white/20" /> 01. Source Image
+                </label>
+                {image && <button onClick={() => setImage(null)} className="text-[10px] text-white/30 hover:text-white">RESET</button>}
               </div>
-              
-              {!image ? (
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-zinc-800 rounded-2xl h-64 flex flex-col items-center justify-center gap-4 cursor-pointer hover:border-emerald-500/50 hover:bg-zinc-900/50 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Upload className="text-zinc-400 group-hover:text-emerald-400" size={20} />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-medium">Click to upload image</p>
-                    <p className="text-xs text-zinc-500 mt-1">PNG, JPG up to 10MB</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-900 group">
-                  <img src={image} alt="Original" className="w-full h-auto max-h-64 object-contain" referrerPolicy="no-referrer" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm rounded-full flex items-center gap-2 transition-colors"
-                    >
-                      <RefreshCw size={16} /> Replace Image
-                    </button>
-                  </div>
-                </div>
-              )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageUpload} 
-                accept="image/png, image/jpeg, image/webp" 
-                className="hidden" 
-              />
-            </section>
-
-            {/* Action & Expression Section */}
-            <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">2. Action & Expression (Optional)</h2>
-                {actionPrompt && (
-                  <button onClick={() => setActionPrompt('')} className="text-xs text-zinc-500 hover:text-zinc-300 flex items-center gap-1 transition-colors">
-                    <X size={14} /> Clear
-                  </button>
-                )}
-              </div>
-              
-              <div className="flex flex-wrap gap-2">
-                {ACTION_PRESETS.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActionPrompt(p.prompt)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                      actionPrompt === p.prompt 
-                        ? 'bg-blue-500/10 border-blue-500/50 text-blue-400' 
-                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              <input
-                type="text"
-                value={actionPrompt}
-                onChange={(e) => setActionPrompt(e.target.value)}
-                placeholder="e.g., smiling, waving hand, looking up..."
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
-              />
-            </section>
-
-            {/* Prompt Section */}
-            <section className="space-y-3">
-              <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">3. De-AI Style Prompt</h2>
-              
-              <div className="flex flex-wrap gap-2">
-                {PRESETS.map((p, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setPrompt(p.prompt)}
-                    className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                      prompt === p.prompt 
-                        ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400' 
-                        : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200'
-                    }`}
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Enter your custom prompt here..."
-                className="w-full h-32 bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all"
-              />
-            </section>
-
-            {/* Action Button */}
-            <button
-              onClick={handleGenerate}
-              disabled={!image || !prompt || isGenerating}
-              className="w-full py-4 rounded-xl font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-emerald-500 hover:bg-emerald-400 text-zinc-950"
-            >
-              {isGenerating ? (
-                <>
-                  <RefreshCw className="animate-spin" size={18} />
-                  Processing Image...
-                </>
-              ) : (
-                <>
-                  <Sparkles size={18} />
-                  De-AI-fy Image
-                </>
-              )}
-            </button>
-
-            {error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
-                {error}
-              </div>
-            )}
-          </div>
-
-          {/* Right Column: Result */}
-          <div className="lg:col-span-7">
-            <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-3">4. Result</h2>
-            
-            <div className="border border-zinc-800 bg-zinc-900/50 rounded-2xl min-h-[500px] flex flex-col items-center justify-center relative overflow-hidden">
-              <AnimatePresence mode="wait">
-                {isGenerating ? (
-                  <motion.div 
-                    key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="flex flex-col items-center gap-4 text-zinc-500"
-                  >
-                    <div className="relative w-16 h-16">
-                      <div className="absolute inset-0 border-4 border-zinc-800 rounded-full"></div>
-                      <div className="absolute inset-0 border-4 border-emerald-500 rounded-full border-t-transparent animate-spin"></div>
+              <div onClick={() => !image && fileInputRef.current?.click()} className={`relative aspect-square mochizuki-border overflow-hidden cursor-pointer group ${!image ? 'bg-white/[0.02] flex items-center justify-center' : ''}`}>
+                {image ? (
+                  <>
+                    <img src={image} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" alt="Source" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <button onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }} className="px-4 py-2 bg-white text-black text-xs font-bold uppercase tracking-tighter">Replace</button>
                     </div>
-                    <p className="text-sm font-mono animate-pulse">Applying human touch...</p>
-                  </motion.div>
-                ) : resultImage ? (
-                  <motion.div 
-                    key="result"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="w-full h-full flex flex-col"
-                  >
-                    <div className="flex-1 p-4 flex items-center justify-center">
-                      <img 
-                        src={resultImage} 
-                        alt="De-AI-fied result" 
-                        className="max-w-full max-h-[600px] object-contain rounded-lg shadow-2xl"
-                        referrerPolicy="no-referrer"
-                      />
-                    </div>
-                    <div className="p-4 border-t border-zinc-800 bg-zinc-900 flex justify-end">
-                      <button 
-                        onClick={handleDownload}
-                        className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors"
-                      >
-                        <Download size={16} />
-                        Download Result
-                      </button>
-                    </div>
-                  </motion.div>
+                  </>
                 ) : (
-                  <motion.div 
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center gap-3 text-zinc-600"
-                  >
-                    <ImageIcon size={48} strokeWidth={1} />
-                    <p className="text-sm">Your de-AI-fied image will appear here</p>
-                  </motion.div>
+                  <div className="text-center space-y-2">
+                    <Upload size={24} className="mx-auto text-white/20 group-hover:text-emerald-500 transition-colors" />
+                    <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest">Drop Image Here</p>
+                  </div>
                 )}
-              </AnimatePresence>
-            </div>
-          </div>
+                <input type="file" ref={fileInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
+              </div>
+            </section>
 
-        </div>
-      </main>
+            <section className="space-y-4">
+              <label className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-4 h-px bg-white/20" /> 02. Art Style
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {STYLE_PRESETS.map((s) => (
+                  <button key={s.id} onClick={() => setSelectedStyle(s)} className={`p-3 text-left mochizuki-border flex items-center justify-between group transition-all ${selectedStyle.id === s.id ? 'bg-white text-black border-white' : 'hover:bg-white/5'}`}>
+                    <div>
+                      <div className="text-xs font-bold uppercase">{s.label}</div>
+                      <div className={`text-[10px] ${selectedStyle.id === s.id ? 'text-black/60' : 'text-white/40'}`}>{s.desc}</div>
+                    </div>
+                    <ChevronRight size={14} className={selectedStyle.id === s.id ? 'text-black' : 'text-white/20'} />
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <label className="text-[11px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-2">
+                <span className="w-4 h-px bg-white/20" /> 03. Pose & Mood
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {ACTION_PRESETS.map((a) => (
+                  <button key={a.label} onClick={() => setActionPrompt(a.prompt)} className={`px-2 py-1 text-[10px] font-bold uppercase border transition-all ${actionPrompt === a.prompt ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-white/10 text-white/40 hover:border-white/40'}`}>{a.label}</button>
+                ))}
+              </div>
+              <input type="text" value={actionPrompt} onChange={(e) => setActionPrompt(e.target.value)} placeholder="CUSTOM POSE DESCRIPTION..." className="w-full bg-white/[0.03] border border-white/10 p-3 text-[11px] font-mono focus:outline-none focus:border-emerald-500 transition-colors uppercase tracking-wider" />
+            </section>
+
+            <button onClick={handleGenerate} disabled={!image || isGenerating} className={`w-full py-4 font-black uppercase tracking-[0.3em] text-sm flex items-center justify-center gap-3 transition-all ${!image || isGenerating ? 'bg-white/5 text-white/20 cursor-not-allowed' : 'bg-emerald-500 text-black hover:bg-emerald-400 neon-glow'}`}>
+              {isGenerating ? <RefreshCw size={18} className="animate-spin" /> : <><Sparkles size={18} />Execute Render</>}
+            </button>
+            {error && <div className="p-3 bg-red-500/10 border border-red-500/50 text-red-500 text-[10px] font-mono uppercase leading-relaxed">Error: {error}</div>}
+          </div>
+        </aside>
+
+        {/* 右侧展示区 */}
+        <main className="flex-1 bg-black relative flex flex-col">
+          <div className="flex-1 flex items-center justify-center p-8 lg:p-12">
+            <AnimatePresence mode="wait">
+              {isGenerating ? (
+                <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center space-y-6">
+                  <div className="relative w-24 h-24 mx-auto">
+                    <div className="absolute inset-0 border border-white/10 rounded-full" />
+                    <div className="absolute inset-0 border-t border-emerald-500 rounded-full animate-spin" />
+                  </div>
+                  <p className="text-xs font-mono text-emerald-500 uppercase tracking-[0.3em]">Processing Pixels</p>
+                </motion.div>
+              ) : resultImage ? (
+                <motion.div key="result" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="relative group max-w-full max-h-full">
+                  <img src={resultImage} className="max-w-full max-h-[75vh] object-contain mochizuki-border shadow-[0_0_50px_rgba(0,0,0,0.5)]" alt="Result" />
+                  <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => window.open(resultImage)} className="w-8 h-8 bg-black/80 backdrop-blur border border-white/20 flex items-center justify-center hover:bg-white hover:text-black"><Maximize2 size={14} /></button>
+                    <button onClick={() => { const a = document.createElement('a'); a.href = resultImage; a.download = `render-${Date.now()}.png`; a.click(); }} className="w-8 h-8 bg-black/80 backdrop-blur border border-white/20 flex items-center justify-center hover:bg-white hover:text-black"><Download size={14} /></button>
+                  </div>
+                </motion.div>
+              ) : (
+                <div className="text-center space-y-4 opacity-20">
+                  <Layers size={48} strokeWidth={1} className="mx-auto" />
+                  <p className="text-xs font-mono uppercase tracking-[0.4em]">Waiting for Input</p>
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
+          <footer className="h-10 border-t border-white/5 flex items-center justify-between px-6 bg-black/80">
+            <div className="flex gap-6 text-[9px] font-mono text-white/30 uppercase">
+              <div><span className="text-emerald-500">Mode:</span> {selectedStyle.id}</div>
+              <div><span className="text-emerald-500">Status:</span> {isGenerating ? 'Rendering' : 'Idle'}</div>
+            </div>
+            <div className="flex items-center gap-1 text-[9px] font-mono text-white/20 uppercase"><Info size={10} />Inspired by Kei Mochizuki</div>
+          </footer>
+        </main>
+      </div>
     </div>
   );
 }
