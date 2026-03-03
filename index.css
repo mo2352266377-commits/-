@@ -1,10 +1,4 @@
-/* 先导入字体 */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
-/* 使用更明确的导入方式 */
-@import "tailwindcss" preflight;
-@import "tailwindcss" utilities;
-@import "tailwindcss" theme;
+@import "tailwindcss";
 
 @theme {
   --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
@@ -12,26 +6,20 @@
 }
 
 @layer base {
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  
   body {
     @apply bg-[#050505] text-white antialiased;
   }
 }
 
-/* 望月风格的锐利边框 */
 .mochizuki-border {
   @apply border border-white/20 hover:border-white/60 transition-colors duration-300;
 }
 
-/* 霓虹发光效果 */
 .neon-glow {
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
+  @apply shadow-[0_0_15px_rgba(16,185,129,0.2)];
 }
 
-/* 隐藏滚动条 */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
