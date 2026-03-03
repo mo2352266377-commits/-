@@ -62,7 +62,7 @@ export default function App() {
     setError(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       
       const finalPrompt = actionPrompt.trim() 
         ? `Based on the character in the reference image, redraw them with a COMPLETELY NEW pose and expression: "${actionPrompt}". Do not just trace the original image. Apply this art style: ${prompt}`
